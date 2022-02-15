@@ -94,14 +94,17 @@ def condensePreds_proteinSet(predictedComplexes_dict, verbose=False):
 
     return proteinSet
 
-def quickCompare_contrast(refComplex, predictedComplexes_dict, returnResults=False):
+def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust=True, jindex=0.6, returnResults=False):
     predsProteins_base = condensePreds_proteinSet(predictedComplexes_dict)
     print('Proteins overlap with refComplex: ' +
           str(len(predsProteins_base.intersection(refComplex))) +
           ' out of ' + str(len(refComplex)) + '.')
+    if proteinSet_adjust:
+        refComplex == refComplex.intersection(predsProteins_base)
 
     supersetCount = 0
     subsetCount = 0
+    jaccardIndices = np.empty((0,))
     predLen_refConstituents = np.empty((0,))
     for complexSet in list(predictedComplexes_dict.values()):
         # count supersets
@@ -110,21 +113,33 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, returnResults=Fal
         # count subsets
         subsetCount += complexSet.issubset(refComplex)
 
+        # calculate J indices
+        jaccardIndices = \
+            np.concatenate((jaccardIndices,
+                            [len(complexSet.intersection(refComplex))/len(complexSet.union(refComplex))]))
+
         # quantify overlap
         predLen_refConstituents = \
             np.concatenate((predLen_refConstituents,
                             [len(complexSet.intersection(refComplex))]))
 
+    overlapInterest = predLen_refConstituents[np.argwhere(jaccardIndices>=jindex)]
+
     print('# of predictions overlapping with reference complex: ' +
-          str(len(predLen_refConstituents[predLen_refConstituents > 0]))
-          )
-    print('Max overlap with reference complex: ' +
-          str(np.amax(predLen_refConstituents))
-          )
+          str(len(predLen_refConstituents[predLen_refConstituents>0])))
     print('# of predictions for which refComplex is a superset: ' +
           str(supersetCount))
     print('# of predictions for which refComplex is a subset: ' +
           str(subsetCount))
+    print('# of predictions with >= 0.6 Jaccard index: ' +
+          str(len(jaccardIndices[jaccardIndices>=jindex])))
+    try:
+        print('Max overlap of predictions with reference complex having Jaccard index of >=' + str(jindex) + ': '
+          + str(np.amax(overlapInterest)))
+        print('Mean overlap of predictions with reference complex having Jaccard index of >=' + str(jindex) + ': '
+          + str(np.mean(overlapInterest)))
+    except ValueError:
+        pass
     print('____________________________________________________')
 
     if returnResults:
@@ -134,13 +149,38 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, returnResults=Fal
             str(len(refComplex))
         results['supersetCount'] = supersetCount
         results['subsetCount'] = subsetCount
-        results['overlappingPreds_count'] = \
-            len(predLen_refConstituents[predLen_refConstituents > 0])
-        results['overlappingPreds_max'] = \
-            np.amax(predLen_refConstituents)
+        results['overlapCount_Jindex'] = \
+            len(jaccardIndices[jaccardIndices>=jindex])
+        results['jaccardIndices'] = jaccardIndices
         results['pred2ref'] = predLen_refConstituents
+        try:
+            results['overlapCount_Jindex_max'] = np.amax(overlapInterest)
+            results['overlapCount_Jindex_mean'] = np.mean(overlapInterest)
+            results['overlapInterest'] = overlapInterest
+        except ValueError:
+            pass
 
         return results
+
+def compareContrast_all(refComplex_set, predictedComplexes_dict, alignRef_2Pred=True, similarityMetric=0.6):
+
+  maxReconstituted = np.empty((len(refComplex_set), 1))
+  meanReconstituted = np.empty((len(refComplex_set), 1))
+  for refIdx, refComplex in zip(np.arange(len(refComplex_set)), list(refComplex_set)):
+    predRef_analysisResults = \
+      quickCompare_contrast(refComplex, predictedComplexes_dict,
+                            proteinSet_adjust=alignRef_2Pred, jindex=similarityMetric, returnResults=True)
+
+    if 'overlapCount_Jindex_max' in predRef_analysisResults:
+      maxReconstituted[refIdx] = predRef_analysisResults['overlapCount_Jindex_max']
+    else:
+      maxReconstituted[refIdx] = 0
+    if 'overlapCount_Jindex_mean' in predRef_analysisResults:
+      meanReconstituted[refIdx] = predRef_analysisResults['overlapCount_Jindex_mean']
+    else:
+      meanReconstituted[refIdx] = 0
+
+  return maxReconstituted, meanReconstituted
 
 def generateInputs_complexBuilder_testCase(proteinSets, outputPrefix,
                                            fakeConfidence_value=0.9,
