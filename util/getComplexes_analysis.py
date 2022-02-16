@@ -163,7 +163,7 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust
             results['overlapCount_Jindex_mean'] = np.mean(overlapInterest)
             results['reconstitutionFraction_max'] = np.amax(overlapInterest)/len(refComplex)
             results['reconstitutionFraction_mean'] = np.mean(overlapInterest)/len(refComplex)
-            results['referencePurity_maxFraction'] = np.amax(overlapInterest)/predsInterest[np.argmax(overlapInterest)]
+            results['referencePurity_maxFraction'] = np.amax(overlapInterest)/predsInterest[np.argmax(overlapInterest)][0]
             results['referencePurity_meanFraction'] = np.mean(overlapInterest)/np.mean(predsInterest)
             results['predsInterest'] = predsInterest
             results['overlapInterest'] = overlapInterest
