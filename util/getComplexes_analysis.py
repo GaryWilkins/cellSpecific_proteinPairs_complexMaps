@@ -174,23 +174,33 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust
 
 def compareContrast_all(refComplex_set, predictedComplexes_dict, alignRef_2Pred=True, similarityMetric=0.6):
 
-  maxReconstituted = np.empty((len(refComplex_set), 1))
-  meanReconstituted = np.empty((len(refComplex_set), 1))
+  reconFrac_max = np.empty((len(refComplex_set), 1))
+  reconFrac_mean = np.empty((len(refComplex_set), 1))
+  purityFrac_max = np.empty((len(refComplex_set), 1))
+  purityFrac_mean = np.empty((len(refComplex_set), 1))
   for refIdx, refComplex in zip(np.arange(len(refComplex_set)), list(refComplex_set)):
     predRef_analysisResults = \
       quickCompare_contrast(refComplex, predictedComplexes_dict,
                             proteinSet_adjust=alignRef_2Pred, jindex=similarityMetric, returnResults=True)
 
-    if 'overlapCount_Jindex_max' in predRef_analysisResults:
-      maxReconstituted[refIdx] = predRef_analysisResults['overlapCount_Jindex_max']
+    if 'reconstitutionFraction_max' in predRef_analysisResults:
+      reconFrac_max[refIdx] = predRef_analysisResults['reconstitutionFraction_max']
     else:
-      maxReconstituted[refIdx] = 0
-    if 'overlapCount_Jindex_mean' in predRef_analysisResults:
-      meanReconstituted[refIdx] = predRef_analysisResults['overlapCount_Jindex_mean']
+      reconFrac_max[refIdx] = 0
+    if 'reconstitutionFraction_mean' in predRef_analysisResults:
+      reconFrac_mean[refIdx] = predRef_analysisResults['reconstitutionFraction_mean']
     else:
-      meanReconstituted[refIdx] = 0
+      reconFrac_mean[refIdx] = 0
+    if 'referencePurity_maxFraction' in predRef_analysisResults:
+      purityFrac_max[refIdx] = predRef_analysisResults['referencePurity_maxFraction']
+    else:
+      purityFrac_max[refIdx] = 0
+    if 'referencePurity_meanFraction' in predRef_analysisResults:
+      purityFrac_mean[refIdx] = predRef_analysisResults['referencePurity_meanFraction']
+    else:
+      purityFrac_mean[refIdx] = 0
 
-  return maxReconstituted, meanReconstituted
+  return reconFrac_max, reconFrac_mean, purityFrac_max, purityFrac_mean
 
 def generateInputs_complexBuilder_testCase(proteinSets, outputPrefix,
                                            fakeConfidence_value=0.9,
