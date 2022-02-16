@@ -100,18 +100,22 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust
           str(len(predsProteins_base.intersection(refComplex))) +
           ' out of ' + str(len(refComplex)) + '.')
     if proteinSet_adjust:
-        refComplex == refComplex.intersection(predsProteins_base)
+        refComplex = refComplex.intersection(predsProteins_base)
 
     supersetCount = 0
     subsetCount = 0
-    jaccardIndices = np.empty((0,))
+    predLens = np.empty((0,))
     predLen_refConstituents = np.empty((0,))
+    jaccardIndices = np.empty((0,))
     for complexSet in list(predictedComplexes_dict.values()):
         # count supersets
         supersetCount += complexSet.issuperset(refComplex)
 
         # count subsets
         subsetCount += complexSet.issubset(refComplex)
+
+        # track predicted complexes' lengths
+        predLens = np.concatenate((predLens, [len(complexSet)]))
 
         # calculate J indices
         jaccardIndices = \
@@ -123,6 +127,7 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust
             np.concatenate((predLen_refConstituents,
                             [len(complexSet.intersection(refComplex))]))
 
+    predsInterest = predLens[np.argwhere(jaccardIndices>=jindex)]
     overlapInterest = predLen_refConstituents[np.argwhere(jaccardIndices>=jindex)]
 
     print('# of predictions overlapping with reference complex: ' +
@@ -156,6 +161,11 @@ def quickCompare_contrast(refComplex, predictedComplexes_dict, proteinSet_adjust
         try:
             results['overlapCount_Jindex_max'] = np.amax(overlapInterest)
             results['overlapCount_Jindex_mean'] = np.mean(overlapInterest)
+            results['reconstitutionFraction_max'] = np.amax(overlapInterest)/len(refComplex)
+            results['reconstitutionFraction_mean'] = np.mean(overlapInterest)/len(refComplex)
+            results['referencePurity_maxFraction'] = np.amax(overlapInterest)/predsInterest[np.argmax(overlapInterest)]
+            results['referencePurity_meanFraction'] = np.mean(overlapInterest)/np.mean(predsInterest)
+            results['predsInterest'] = predsInterest
             results['overlapInterest'] = overlapInterest
         except ValueError:
             pass
@@ -300,6 +310,32 @@ def acquirePredictions(dataDir_patt, modelResults_dirPatt, outputPrefix, suffix=
         buildComplexes(outputPrefix, complexBuilder_threshold, outputDir)
 
     return labels_acrossFolds, combinedWeighted_probsPos_kCV
+
+def getComplex_predictions(outputDir, outputPrefix, realDir=True):
+
+  if not realDir:
+    predictionsPath = \
+      '/content/' + outputPrefix + '/' + outputPrefix + '_pairsPredictions*.txt'
+  else:
+    predictionsPath = \
+      outputDir + outputPrefix + '/' + outputPrefix + '_pairsPredictions*.txt'
+
+  predictedCliques_sets = dict()
+  for filename in glob.glob(predictionsPath):
+    filenameExtension = filename.split('.txt')[0].split('_pairsPredictions')[1]
+    if filenameExtension.isnumeric():
+      if int(filenameExtension) != 2:
+        clique = dict()
+        data = pd.read_csv(filename, sep='\t',
+                           header=None, names=['complex', 'score'])
+        for idx in data.index:
+          line = [ele for ele in re.split(',', data['complex'].loc[idx]) if ele]
+          clique[idx] = set(list(map(str, line)))
+
+        predictedCliques_sets[int(filenameExtension)] = \
+          [frozenset(ele) for ele in list(clique.values())]
+
+  return predictedCliques_sets
 
 def contrastCORUM(refComplexes, testComplexes):
 

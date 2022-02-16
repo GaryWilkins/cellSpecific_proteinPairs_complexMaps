@@ -13,7 +13,7 @@ def buildComplexes(outputPrefix, complexBuilder_threshold, *otherArgs):
     path_to_pairsInfo = './' + outputPrefix + '/' + outputPrefix + '_pairsInfo.tsv '
     path_to_pairsPredictions = './' + outputPrefix + '/' + outputPrefix + '_pairsPredictions '
     cmd = 'python ' + path_to_complex_builder + path_to_pairsInfo + \
-          path_to_pairsPredictions + complexBuilder_threshold + ' .'
+          path_to_pairsPredictions + str(complexBuilder_threshold) + ' .'
 
     print('For reference, the command passing to the complex builder is as follows: ')
     print(cmd)
